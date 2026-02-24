@@ -1,0 +1,339 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+//////////////////////////////////////////////////////
+// GLOBAL STATE
+//////////////////////////////////////////////////////
+
+let currentUser = null;
+let statusChartInstance = null;
+
+const API = "PASTE_YOUR_WEB_APP_URL_HERE";
+
+//////////////////////////////////////////////////////
+// GLOBAL UI HELPERS
+//////////////////////////////////////////////////////
+
+function showLoader() {
+  document.body.classList.add("loading");
+}
+
+function hideLoader() {
+  document.body.classList.remove("loading");
+}
+
+function showError(message) {
+  alert(message); // replace with toast later
+}
+
+//////////////////////////////////////////////////////
+// API WRAPPER (ENTERPRISE SAFE)
+//////////////////////////////////////////////////////
+
+async function callAPI(data) {
+
+  const token = localStorage.getItem("mallToken");
+  if (token) data.token = token;
+
+  try {
+    showLoader();
+
+    const response = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    hideLoader();
+
+    if (result.error === "Session expired") {
+      showError("Session expired. Please login again.");
+      logout();
+      return null;
+    }
+
+    if (result.success === false && result.message) {
+      showError(result.message);
+      return null;
+    }
+
+    return result;
+
+  } catch (err) {
+    hideLoader();
+    showError("Network error. Please try again.");
+    return null;
+  }
+}
+
+//////////////////////////////////////////////////////
+// AUTH
+//////////////////////////////////////////////////////
+
+async function login() {
+
+  const userId = document.getElementById("userId").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!userId || !password) {
+    showError("Enter User ID and Password");
+    return;
+  }
+
+  const res = await callAPI({
+    action: "login",
+    userId,
+    password
+  });
+
+  if (!res || !res.success) return;
+
+  currentUser = res.user;
+
+  localStorage.setItem("mallToken", res.token);
+  localStorage.setItem("mallUser", JSON.stringify(res.user));
+
+  document.getElementById("loginPage").classList.add("hidden");
+  document.getElementById("dashboardPage").classList.remove("hidden");
+
+  setupRoleUI();
+  loadDashboard();
+}
+
+function logout() {
+  callAPI({ action: "logout" });
+  localStorage.clear();
+  location.reload();
+}
+
+//////////////////////////////////////////////////////
+// ROLE-BASED UI
+//////////////////////////////////////////////////////
+
+function setupRoleUI() {
+
+  const tabs = document.getElementById("roleTabs");
+  tabs.innerHTML = "";
+
+  if (!currentUser) return;
+
+  const role = currentUser.role;
+
+  if (role === "Admin" || role === "Mall") {
+    tabs.innerHTML = `
+      <button onclick="showTab('dashboard')">Dashboard</button>
+      <button onclick="showTab('tickets')">All Tickets</button>
+      <button onclick="showTab('users')">Users</button>
+      <button onclick="showTab('departments')">Departments</button>
+    `;
+  }
+
+  else if (role === "Tenant") {
+    tabs.innerHTML = `
+      <button onclick="showTab('dashboard')">Dashboard</button>
+      <button onclick="showTab('tickets')">My Tickets</button>
+      <button onclick="showTab('create')">Create Ticket</button>
+    `;
+  }
+
+  else if (role === "Department") {
+    tabs.innerHTML = `
+      <button onclick="showTab('dashboard')">Dashboard</button>
+      <button onclick="showTab('tickets')">Assigned Tickets</button>
+    `;
+  }
+}
+
+function showTab(name) {
+
+  document.querySelectorAll(".tab")
+    .forEach(tab => tab.classList.add("hidden"));
+
+  const activeTab = document.getElementById(name + "Tab");
+  if (activeTab) activeTab.classList.remove("hidden");
+
+  if (name === "users") loadUsers();
+  if (name === "departments") loadDepartments();
+}
+
+//////////////////////////////////////////////////////
+// DASHBOARD
+//////////////////////////////////////////////////////
+
+async function loadDashboard() {
+
+  if (!currentUser) return;
+
+  const res = await callAPI({
+    action: "getTickets",
+    limit: 20,
+    offset: 0
+  });
+
+  if (!Array.isArray(res)) return;
+
+  const role = currentUser.role;
+
+  if (role === "Admin" || role === "Mall") {
+    renderAdminChart(res);
+    renderTicketTable(res);
+  }
+
+  else if (role === "Tenant") {
+    renderTenantTable(res);
+    renderAdminChart(res);
+  }
+
+  else if (role === "Department") {
+    renderDepartmentTable(res);
+  }
+}
+
+//////////////////////////////////////////////////////
+// TICKET TABLES
+//////////////////////////////////////////////////////
+
+function renderTicketTable(data) {
+
+  let html = `
+    <tr>
+      <th>ID</th>
+      <th>Tenant</th>
+      <th>Status</th>
+      <th>Priority</th>
+      <th>Action</th>
+    </tr>
+  `;
+
+  data.forEach(t => {
+    html += `
+      <tr>
+        <td>${t[0]}</td>
+        <td>${t[1]}</td>
+        <td>${t[4]}</td>
+        <td>${t[3]}</td>
+        <td>
+          <button onclick="updateStatus('${t[0]}','Approved')">Approve</button>
+          <button onclick="updateStatus('${t[0]}','Rejected')">Reject</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("ticketTable").innerHTML = html;
+}
+
+async function updateStatus(ticketID, newStatus) {
+
+  await callAPI({
+    action: "updateTicketStatus",
+    ticketID,
+    newStatus
+  });
+
+  loadDashboard();
+}
+
+//////////////////////////////////////////////////////
+// CHART MANAGEMENT (NO MEMORY LEAK)
+//////////////////////////////////////////////////////
+
+function renderAdminChart(data) {
+
+  const counts = {};
+
+  data.forEach(t => {
+    counts[t[4]] = (counts[t[4]] || 0) + 1;
+  });
+
+  const ctx = document.getElementById("statusChart");
+
+  if (statusChartInstance) {
+    statusChartInstance.destroy();
+  }
+
+  statusChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{
+        data: Object.values(counts)
+      }]
+    }
+  });
+}
+
+//////////////////////////////////////////////////////
+// USERS & DEPARTMENTS
+//////////////////////////////////////////////////////
+
+async function loadUsers() {
+
+  const res = await callAPI({ action: "getUsers" });
+  if (!Array.isArray(res)) return;
+
+  let html = "<tr><th>ID</th><th>Name</th><th>Role</th></tr>";
+
+  res.forEach(u => {
+    html += `
+      <tr>
+        <td>${u[0]}</td>
+        <td>${u[1]}</td>
+        <td>${u[3]}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("usersTable").innerHTML = html;
+}
+
+async function loadDepartments() {
+
+  const res = await callAPI({ action: "getDepartments" });
+  if (!Array.isArray(res)) return;
+
+  let html = "<tr><th>ID</th><th>Name</th></tr>";
+
+  res.forEach(d => {
+    html += `
+      <tr>
+        <td>${d[0]}</td>
+        <td>${d[1]}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("deptTable").innerHTML = html;
+}
+
+//////////////////////////////////////////////////////
+// SESSION RESTORE
+//////////////////////////////////////////////////////
+
+window.onload = function () {
+
+  const savedUser = localStorage.getItem("mallUser");
+
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("dashboardPage").classList.remove("hidden");
+    setupRoleUI();
+    loadDashboard();
+  }
+};
+
+//////////////////////////////////////////////////////
+// ENTER KEY LOGIN
+//////////////////////////////////////////////////////
+
+document.addEventListener("keypress", function (e) {
+  if (e.key === "Enter" &&
+      !document.getElementById("loginPage").classList.contains("hidden")) {
+    login();
+  }
+});
+
+</script>

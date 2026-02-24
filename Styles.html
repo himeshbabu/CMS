@@ -1,0 +1,109 @@
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #F6E7BC;
+}
+
+header {
+  background: #0B2D72;
+  color: white;
+  padding: 12px;
+  display:flex;
+  justify-content: space-between;
+}
+
+button {
+  background:#0992C2;
+  color:white;
+  border:none;
+  padding:8px 12px;
+  border-radius:6px;
+  margin:4px 0;
+}
+
+button:hover { background:#0AC4E0; }
+
+input, select, textarea {
+  width:100%;
+  padding:8px;
+  margin:6px 0;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.page { padding:15px; }
+.hidden { display:none; }
+
+.tabs {
+  display:flex;
+  gap:5px;
+  margin-bottom:10px;
+}
+
+.table-wrapper {
+  overflow-x:auto;
+}
+
+table {
+  width:100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border:1px solid #ddd;
+  padding:6px;
+  font-size:14px;
+}
+
+.badge {
+  padding:3px 6px;
+  border-radius:12px;
+  color:white;
+  font-size:12px;
+}
+
+.status-Submitted { background:#0992C2; }
+.status-Approved { background:#0AC4E0; }
+.status-Closed { background:green; }
+.status-Rejected { background:red; }
+
+@media(min-width:768px){
+  .tabs button { flex:1; }
+}
+
+.login-container {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.login-card {
+  background:white;
+  padding:25px;
+  border-radius:12px;
+  width:100%;
+  max-width:350px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+
+.login-card h2 {
+  text-align:center;
+  margin-bottom:20px;
+  color:#0B2D72;
+}
+
+.error {
+  color:red;
+  margin-top:10px;
+  font-size:14px;
+}
+
+.loader {
+  margin-top:10px;
+  color:#0992C2;
+  font-size:14px;
+}
+
+</style>

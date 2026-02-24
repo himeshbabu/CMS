@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+
+<header>
+  <div class="logo">Mall Portal</div>
+  <button onclick="logout()">Logout</button>
+</header>
+
+<div id="loginPage" class="page login-container">
+
+  <div class="login-card">
+    <h2>Mall Ticket Portal</h2>
+
+    <input id="userId" placeholder="User ID" autocomplete="off">
+    <input id="password" type="password" placeholder="Password" autocomplete="off">
+
+    <button id="loginBtn" onclick="login()">Login</button>
+
+    <div id="loginError" class="error hidden"></div>
+    <div id="loginLoader" class="loader hidden">Logging in...</div>
+  </div>
+
+</div>
+
+<div id="dashboardPage" class="page hidden">
+
+  <div class="tabs" id="roleTabs"></div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboardTab" class="tab">
+    <h3>Ticket Status Overview</h3>
+    <canvas id="statusChart"></canvas>
+    <div id="statsCards"></div>
+  </div>
+
+  <!-- TICKETS -->
+  <div id="ticketsTab" class="tab hidden">
+    <h3>All Tickets</h3>
+    <div class="table-wrapper">
+      <table id="ticketTable"></table>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div id="usersTab" class="tab hidden">
+    <h3>Manage Users</h3>
+    <button onclick="showAddUser()">Add User</button>
+    <div class="table-wrapper">
+      <table id="usersTable"></table>
+    </div>
+  </div>
+
+  <!-- DEPARTMENTS -->
+  <div id="departmentsTab" class="tab hidden">
+    <h3>Departments</h3>
+    <button onclick="showAddDept()">Add Department</button>
+    <div class="table-wrapper">
+      <table id="deptTable"></table>
+    </div>
+  </div>
+
+</div>
+
+<div id="departmentsTab" class="tab hidden">
+  <h3>Departments</h3>
+  <div class="table-wrapper">
+    <table id="deptTable"></table>
+  </div>
+</div>
+
+</div>
+
+<?!= include('Scripts'); ?>
+
+</body>
+</html>
